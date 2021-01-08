@@ -3,44 +3,54 @@ library(ISLR)
 library(pls)
 
 
-data <- read.csv("data_for_modeling.csv")
+data <- read.csv("data_for_modeling_v2.csv")
+filtered_data <- subset(data, select = -c(X, id, sold_year, heating, cooling,
+                                          flooring, appliances, most_recent_listing_date,
+                                          most_recent_listing_price, sold_time, listing_sold_time_diff,
+                                          price_percent_change))
 
-# Clean unused columns
-data <- subset(data, select = -c(sold_year, sold_month, sold_day, id, X,
-                                has_pets_info, has_laundry_info, state))
 
 # Get training set and test set
-set.seed(33)    
-train_size <- floor(0.75 * nrow(data))
-train = sample(1:nrow(data), train_size)
+set.seed(33)
+train_size <- floor(0.75 * nrow(filtered_data))
+train <- sample(1:nrow(filtered_data), train_size)
 
 #################################
 # Leap Forward Subset Selection #
-model_matrix = model.matrix(price ~ ., data = data[-train, ])
+model_matrix <- model.matrix(price ~ ., data = filtered_data[-train, ])
 set.seed(33)
 train_control <- trainControl(method = "cv")
 caret_forward_stepwise = train(form = price ~ .,
-                          data = data,
+                          data = filtered_data,
                           subset = train,
                           method = 'leapForward',
-                          tuneGrid = data.frame(nvmax = 29),
+                          tuneGrid = data.frame(nvmax = 25),
                           trControl = train_control)
-forward_stepwise = caret_best.subset$finalModel
+forward_stepwise = caret_forward_stepwise$finalModel
 summary(forward_stepwise)
 
 # Find the best subset size
-mse_validation = rep(0, 26)
-for (t in 1:26)
+mse_validation <- rep(0, 23)
+for (t in 1:23)
 {
-  coefs = coef(forward_stepwise, t)
-  preds = model_matrix[ , names(coefs)] %*% coefs
-  mse_validation[t] = mean( (data$price[-train] - preds)^2 )
+  coefs <- coef(forward_stepwise, t)
+  preds <- model_matrix[ , names(coefs)] %*% coefs
+  mse_validation[t] <- mean( (filtered_data$price[-train] - preds)^2 )
 }
 
-best_size = which(mse_validation == min(mse_validation))
+best_size <- which(mse_validation == min(mse_validation))
 best_size
 
-# Use the best size to train again
+coef(forward_stepwise, best_size)
+intercept <- as.double(coef(forward_stepwise, best_size)[1])
+ba <- as.double(coef(forward_stepwise, best_size)[2])
+building_age <- as.double(coef(forward_stepwise, best_size)[3])
+
+# Calculate RMSE
+preds_forward_stepwise <- intercept + ba * filtered_data$ba[-train] + building_age * filtered_data$building_age[-train]
+rmse_forward_stepwise <- mean( (preds_forward_stepwise - filtered_data$price[-train])**2 )**0.5
+rmse_forward_stepwise
+summary(filtered_data)
 
 
 ##############################
