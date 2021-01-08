@@ -26,7 +26,7 @@ caret_forward_stepwise = train(form = price ~ .,
                           method = 'leapForward',
                           tuneGrid = data.frame(nvmax = 25),
                           trControl = train_control)
-forward_stepwise = caret_forward_stepwise$finalModel
+forward_stepwise <- caret_forward_stepwise$finalModel
 summary(forward_stepwise)
 
 # Find the best subset size
@@ -57,49 +57,52 @@ summary(filtered_data)
 # Ridge Regression Selection #
 grid = 10^seq(10,-5,length=100)
 set.seed(33)
-train_control = trainControl(method = "cv")
-caret_model_l2_cv = train(price ~ .,
-                          data = data,
+train_control <- trainControl(method = "cv")
+caret_model_l2_cv <- train(price ~ .,
+                          data = filtered_data,
                           subset = train,
                           method = "glmnet",
                           lambda = grid,
                           tuneGrid = data.frame(alpha = 0, lambda = grid),
                           trControl = train_control)
 # Get best Lambda
-best_lambda = caret_model_l2_cv$bestTune$lambda
+best_lambda <- caret_model_l2_cv$bestTune$lambda
 best_lambda
 
 # Train again using the best Lambda found
-caret_model_l2 = train(price ~ .,
-                       data = data,
+caret_model_l2 <- train(price ~ .,
+                       data = filtered_data,
                        subset = train,
                        method = "glmnet",
                        lambda = best_lambda,
                        tuneGrid = data.frame(alpha = 0, lambda = best_lambda))
-model_l2 = caret_model_l2$finalModel
+model_l2 <- caret_model_l2$finalModel
 
 # Observe the coefficients
-coef(model_l2)[2:30]
+coef(model_l2)[1:26]
 
 # Predict on test set
-y_pred_l2 = predict(caret_model_l2, data[-train,])
+y_pred_l2 <- predict(caret_model_l2, data[-train,])
 
 # Calculate RMSE
-RMSE_l2 = mean( (y_pred_l2 - data$price[-train])**2 )**0.5
+RMSE_l2 <- mean( (y_pred_l2 - filtered_data$price[-train])**2 )**0.5
 RMSE_l2
 
 
 ####################################
 # Partial Least Squares Regression #
 set.seed(33)
-train_control = trainControl(method = "cv")
-caret_pls.fit_cv = train(price ~.,
-                         data = Hitters.clean,
+train_control <- trainControl(method = "cv")
+caret_pls.fit_cv <- train(price ~.,
+                         data = filtered_data,
                          subset = train,
                          method = "pls",
                          preProcess = c("center", "scale"),
-                         tuneGrid = data.frame(ncomp = 1:(ncol(Hitters.clean-1))),
+                         tuneGrid = data.frame(ncomp = 1:(ncol(filtered_data-1))),
                          trControl = train_control)
-pls.fit_cv = caret_pls.fit_cv$finalModel
-summary(pcr.fit)
+pls.fit_cv <- caret_pls.fit_cv$finalModel
+summary(pls.fit_cv)
 
+pls_preds <- predict(pls.fit_cv, filtered_data[-train,])
+Rsquare <- caret::R2(pls_preds, filtered_data[-train, ]$price)
+RMSE <- caret::RMSE(pls_preds, filtered_data[-train, ]$price)
