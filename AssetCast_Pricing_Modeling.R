@@ -106,3 +106,34 @@ summary(pls.fit_cv)
 pls_preds <- predict(pls.fit_cv, filtered_data[-train,])
 Rsquare <- caret::R2(pls_preds, filtered_data[-train, ]$price)
 RMSE <- caret::RMSE(pls_preds, filtered_data[-train, ]$price)
+
+plot(data$X, data$price)
+
+
+
+
+
+######################
+# Try PLS on data_v3 #
+data_v3 <- read.csv("data_for_modeling_v3.csv")
+data_v3 <- subset(data_v3, select = -c(X, id, sold_year, most_recent_listing_date,
+                                    most_recent_listing_price, sold_time, listing_sold_time_diff,
+                                    price_percent_change))
+
+set.seed(33)
+train_control <- trainControl(method = "cv")
+caret_pls_fit_v3 <- train(price ~.,
+                          data = data_v3,
+                          subset = train,
+                          method = "pls",
+                          preProcess = c("center", "scale"),
+                          tuneGrid = data.frame(ncomp = 1:(ncol(data_v3-1))),
+                          trControl = train_control)
+pls_v3 <- caret_pls_fit_v3$finalModel
+summary(pls.fit_cv)
+
+
+
+###########################
+# Try Random Forest Model #
+
